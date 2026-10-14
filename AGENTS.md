@@ -7,4 +7,4 @@ Slim always-on wiring. Do not load full `SKILL.md` files on boot.
 - **Hallmark** (UI only) — `.cursor/rules/hallmark.mdc`. Load `.agents/skills/hallmark/SKILL.md` only when designing or auditing a page.
 - **Graphify** (query before grep) — `.cursor/rules/graphify.mdc`. Full skill: `.agents/skills/graphify/SKILL.md`.
 
-This repo does not use Supabase. Do not install caveman, cavecrew, omni-*, or cli-* OmniRoute dumps.
+This repo is a Flutter + Supabase app (`app/` + `supabase/`). Do not install caveman, cavecrew, omni-*, or cli-* OmniRoute dumps.
