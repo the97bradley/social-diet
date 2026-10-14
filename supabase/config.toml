@@ -1,2 +1,6 @@
 # Hosted project: Social Diet (us-west-2)
 project_id = "munjmpzbpwfwybnppfqp"
+
+# shortcut: no confirm-email, add custom SMTP + confirmations when abuse shows up
+[auth.email]
+enable_confirmations = false

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../session.dart';
 import '../theme.dart';
@@ -51,7 +52,7 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         if (result.session == null) {
           setState(() {
-            _notice = 'Check your email to confirm the account, then sign in.';
+            _notice = 'Account created. Sign in with the same email.';
             _signUp = false;
           });
         }
@@ -59,7 +60,12 @@ class _AuthScreenState extends State<AuthScreen> {
         await session.signIn(_email.text.trim(), _password.text);
       }
     } catch (error) {
-      if (mounted) await showError(context, error);
+      if (mounted) {
+        await showError(
+          context,
+          error is AuthException ? error.message : error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

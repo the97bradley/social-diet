@@ -66,18 +66,27 @@ class SessionController extends ChangeNotifier {
     required String username,
     required String displayName,
   }) async {
-    final response = await client.auth.signUp(
-      email: email,
-      password: password,
-      data: {
-        'username': username.toLowerCase(),
-        'display_name': displayName,
-      },
-    );
-    if (response.session != null) {
-      await refreshProfile();
+    try {
+      final invoked = await client.functions.invoke(
+        'create-account',
+        body: {
+          'email': email,
+          'password': password,
+          'username': username.toLowerCase(),
+          'display_name': displayName,
+        },
+      );
+      if (invoked.status >= 400) {
+        throw AuthException(_functionError(invoked.data));
+      }
+    } on FunctionException catch (error) {
+      throw AuthException(_functionError(error.details));
     }
-    return response;
+    await signIn(email, password);
+    return AuthResponse(
+      session: client.auth.currentSession,
+      user: client.auth.currentUser,
+    );
   }
 
   Future<void> signOut() async {
@@ -91,6 +100,16 @@ class SessionController extends ChangeNotifier {
     _authSub.cancel();
     super.dispose();
   }
+}
+
+String _functionError(Object? data) {
+  if (data is Map && data['error'] != null) {
+    return data['error'].toString();
+  }
+  if (data is String && data.trim().isNotEmpty) {
+    return data;
+  }
+  return 'Could not create the account.';
 }
 
 class SessionScope extends InheritedNotifier<SessionController> {

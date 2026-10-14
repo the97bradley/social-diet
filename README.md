@@ -34,7 +34,7 @@ flutter run \
   --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY
 ```
 
-If sign-up returns a user but no session, turn off **Confirm email** in the Supabase Auth settings, or confirm the user and sign in.
+**Create account** calls the `create-account` edge function (`admin.createUser` with `email_confirm`), then signs in. That skips the built-in SMTP cap (`over_email_send_rate_limit`, 2 emails/hour) that used to fail signup with `AuthApiException`.
 
 ## Schema
 

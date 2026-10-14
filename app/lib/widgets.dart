@@ -102,9 +102,24 @@ class EmptyHint extends StatelessWidget {
   }
 }
 
+String errorMessage(Object error) {
+  final raw = error.toString();
+  final text = raw.toLowerCase();
+  if (text.contains('email rate limit') ||
+      text.contains('over_email_send_rate_limit')) {
+    return 'Too many confirmation emails just now. Wait a few minutes and try again, or sign in if the account already exists.';
+  }
+  if (text.contains('already registered') ||
+      text.contains('user_already_exists') ||
+      text.contains('email_exists')) {
+    return 'That email already has an account. Sign in instead.';
+  }
+  return raw;
+}
+
 Future<void> showError(BuildContext context, Object error) {
   return ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(error.toString())))
+      .showSnackBar(SnackBar(content: Text(errorMessage(error))))
       .closed;
 }
 
