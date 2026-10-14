@@ -1,0 +1,12 @@
+---
+description: Hallmark UI only. Slim always-on; load the full skill only when designing or auditing a page.
+alwaysApply: true
+---
+
+# Hallmark (UI only)
+
+Do not load `.agents/skills/hallmark/SKILL.md` on boot or for non-UI work.
+
+Load that skill and its `references/` only when the task is designing, building, auditing, restyling, or reviewing a page or UI.
+
+Non-UI coding stays on Ponytail and Graphify.
