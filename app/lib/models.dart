@@ -339,6 +339,34 @@ class ChatMessage {
   }
 }
 
+class TrelloConnection {
+  const TrelloConnection({
+    required this.userId,
+    required this.apiKey,
+    required this.token,
+    required this.boardId,
+    required this.boardName,
+  });
+
+  final String userId;
+  final String apiKey;
+  final String token;
+  final String boardId;
+  final String boardName;
+
+  bool get isReady => apiKey.isNotEmpty && token.isNotEmpty && boardId.isNotEmpty;
+
+  factory TrelloConnection.fromJson(Map<String, dynamic> json) {
+    return TrelloConnection(
+      userId: json['user_id'] as String,
+      apiKey: json['api_key'] as String? ?? '',
+      token: json['token'] as String? ?? '',
+      boardId: json['board_id'] as String? ?? '',
+      boardName: json['board_name'] as String? ?? '',
+    );
+  }
+}
+
 class GoalDraft {
   GoalDraft({
     required this.title,

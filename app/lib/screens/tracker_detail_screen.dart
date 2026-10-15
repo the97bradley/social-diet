@@ -4,6 +4,7 @@ import '../models.dart';
 import '../progress.dart';
 import '../session.dart';
 import '../theme.dart';
+import '../trello.dart';
 import '../widgets.dart';
 
 class TrackerDetailScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _TrackerDetailScreenState extends State<TrackerDetailScreen> {
   Map<String, Profile> _people = {};
   List<Friendship> _friends = [];
   bool _loading = true;
+  bool _trelloBusy = false;
 
   @override
   void initState() {
@@ -118,6 +120,32 @@ class _TrackerDetailScreenState extends State<TrackerDetailScreen> {
     }
   }
 
+  Future<void> _sendToTrello() async {
+    setState(() => _trelloBusy = true);
+    TrelloClient? trello;
+    try {
+      final connection = await SessionScope.of(context).repo.trelloConnection();
+      if (connection == null || !connection.isReady) {
+        throw 'Connect Trello in your profile first.';
+      }
+      trello = TrelloClient(apiKey: connection.apiKey, token: connection.token);
+      final count = await trello.pushTracker(_tracker, boardId: connection.boardId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sent $count goals to ${connection.boardName.isEmpty ? 'Trello' : connection.boardName}',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted) await showError(context, error);
+    } finally {
+      trello?.close();
+      if (mounted) setState(() => _trelloBusy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = SessionScope.of(context).user!.id;
@@ -136,6 +164,11 @@ class _TrackerDetailScreenState extends State<TrackerDetailScreen> {
               children: [
                 if (_tracker.description.isNotEmpty)
                   Text(_tracker.description, style: const TextStyle(color: PulseTheme.mist)),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: _trelloBusy ? null : _sendToTrello,
+                  child: Text(_trelloBusy ? 'Sending to Trello…' : 'Send to Trello'),
+                ),
                 const SectionLabel('This period'),
                 for (final goal in _tracker.goals)
                   Padding(

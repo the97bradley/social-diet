@@ -24,6 +24,13 @@ void main() {
     );
   });
 
+  test('maps rejected Trello credentials', () {
+    expect(
+      errorMessage(Exception('invalid token')),
+      'Those Trello credentials were rejected. Check the API key and token.',
+    );
+  });
+
   test('leaves other errors alone', () {
     expect(errorMessage(Exception('Username must be 3-24 letters')),
         'Exception: Username must be 3-24 letters');

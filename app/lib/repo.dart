@@ -261,6 +261,34 @@ class DietRepo {
     });
   }
 
+  Future<TrelloConnection?> trelloConnection() async {
+    final row = await client
+        .from('trello_connections')
+        .select()
+        .eq('user_id', uid)
+        .maybeSingle();
+    return row == null ? null : TrelloConnection.fromJson(row);
+  }
+
+  Future<void> saveTrelloConnection({
+    required String apiKey,
+    required String token,
+    required String boardId,
+    required String boardName,
+  }) {
+    return client.from('trello_connections').upsert({
+      'user_id': uid,
+      'api_key': apiKey,
+      'token': token,
+      'board_id': boardId,
+      'board_name': boardName,
+    });
+  }
+
+  Future<void> clearTrelloConnection() {
+    return client.from('trello_connections').delete().eq('user_id', uid);
+  }
+
   RealtimeChannel watchMessages(
     String conversationId,
     void Function(ChatMessage message) onInsert,

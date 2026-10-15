@@ -114,6 +114,9 @@ String errorMessage(Object error) {
       text.contains('email_exists')) {
     return 'That email already has an account. Sign in instead.';
   }
+  if (text.contains('invalid key') || text.contains('invalid token')) {
+    return 'Those Trello credentials were rejected. Check the API key and token.';
+  }
   return raw;
 }
 
