@@ -1,4 +1,9 @@
 class AppConfig {
+  static const apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://social-diet-denver-porchfest1.vercel.app',
+  );
+
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://munjmpzbpwfwybnppfqp.supabase.co',

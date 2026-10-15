@@ -1,0 +1,4 @@
+{
+  "framework": "node",
+  "rewrites": [{ "source": "/", "destination": "/api" }]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "social-diet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test api/*.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  }
+}

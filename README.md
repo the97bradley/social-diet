@@ -7,7 +7,8 @@ Create a tracker such as “workout 3 times a week” or “only 4 beers a week,
 ## Stack
 
 - Flutter app in `app/`
-- Supabase project **Social Diet** (`munjmpzbpwfwybnppfqp`)
+- Vercel API at [denver-porchfest1/social-diet](https://vercel.com/denver-porchfest1/social-diet/deployments) (`https://social-diet-denver-porchfest1.vercel.app`)
+- Supabase project **Social Diet** (`munjmpzbpwfwybnppfqp`) for auth data and RLS
 - SQL migrations in `supabase/migrations/`
 
 ## App surfaces
@@ -26,15 +27,16 @@ flutter pub get
 flutter run -d chrome
 ```
 
-The client defaults to the hosted Social Diet project. Override with dart-defines:
+The client defaults to the hosted Social Diet project and the Vercel API. Override with dart-defines:
 
 ```bash
 flutter run \
+  --dart-define=API_BASE_URL=https://social-diet-denver-porchfest1.vercel.app \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY
 ```
 
-**Create account** calls the `create-account` edge function (`admin.createUser` with `email_confirm`), then signs in. That skips the built-in SMTP cap (`over_email_send_rate_limit`, 2 emails/hour) that used to fail signup with `AuthApiException`.
+**Create account** POSTs to the Vercel `/api/create-account` function (`admin.createUser` with `email_confirm`), then signs in. That skips the built-in SMTP cap (`over_email_send_rate_limit`, 2 emails/hour) that used to fail signup with `AuthApiException`.
 
 ## Schema
 

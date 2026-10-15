@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config.dart';
 import 'models.dart';
 import 'repo.dart';
 
@@ -66,21 +69,18 @@ class SessionController extends ChangeNotifier {
     required String username,
     required String displayName,
   }) async {
-    try {
-      final invoked = await client.functions.invoke(
-        'create-account',
-        body: {
-          'email': email,
-          'password': password,
-          'username': username.toLowerCase(),
-          'display_name': displayName,
-        },
-      );
-      if (invoked.status >= 400) {
-        throw AuthException(_functionError(invoked.data));
-      }
-    } on FunctionException catch (error) {
-      throw AuthException(_functionError(error.details));
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/create-account'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'username': username.toLowerCase(),
+        'display_name': displayName,
+      }),
+    );
+    if (response.statusCode >= 400) {
+      throw AuthException(_functionError(_decodeBody(response.body)));
     }
     await signIn(email, password);
     return AuthResponse(
@@ -99,6 +99,14 @@ class SessionController extends ChangeNotifier {
   void dispose() {
     _authSub.cancel();
     super.dispose();
+  }
+}
+
+Object? _decodeBody(String body) {
+  try {
+    return jsonDecode(body);
+  } catch (_) {
+    return body;
   }
 }
 
