@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../progress.dart';
 import '../session.dart';
 import '../widgets.dart';
 
@@ -32,6 +33,34 @@ class _TrackerEditorScreenState extends State<TrackerEditorScreen> {
     super.dispose();
   }
 
+  bool _hasTemplate(GoalDraft template) {
+    return _goals.any((goal) =>
+        goal.title == template.title &&
+        goal.period == template.period &&
+        goal.targetValue == template.targetValue);
+  }
+
+  void _toggleTemplate(GoalDraft template) {
+    setState(() {
+      final index = _goals.indexWhere((goal) =>
+          goal.title == template.title &&
+          goal.period == template.period &&
+          goal.targetValue == template.targetValue);
+      if (index >= 0) {
+        _goals.removeAt(index);
+      } else {
+        _goals.add(GoalDraft(
+          title: template.title,
+          category: template.category,
+          kind: template.kind,
+          targetValue: template.targetValue,
+          targetUnit: template.targetUnit,
+          period: template.period,
+        ));
+      }
+    });
+  }
+
   Future<void> _addCustomGoal() async {
     final draft = GoalDraft(title: '');
     final accepted = await showModalBottomSheet<bool>(
@@ -41,6 +70,18 @@ class _TrackerEditorScreenState extends State<TrackerEditorScreen> {
     );
     if (accepted == true && draft.title.trim().isNotEmpty) {
       setState(() => _goals.add(draft));
+    }
+  }
+
+  Future<void> _editGoal(int index) async {
+    final draft = _goals[index];
+    final accepted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => GoalDraftSheet(draft: draft, editing: true),
+    );
+    if (accepted == true && draft.title.trim().isNotEmpty) {
+      setState(() {});
     }
   }
 
@@ -76,11 +117,13 @@ class _TrackerEditorScreenState extends State<TrackerEditorScreen> {
         children: [
           TextField(
             controller: _title,
+            textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(labelText: 'Tracker name'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _description,
+            textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(labelText: 'What is this for?'),
             maxLines: 2,
           ),
@@ -90,32 +133,25 @@ class _TrackerEditorScreenState extends State<TrackerEditorScreen> {
             runSpacing: 8,
             children: [
               for (final template in _templates)
-                ActionChip(
-                  label: Text(template.title),
-                  onPressed: () => setState(() {
-                    _goals.add(GoalDraft(
-                      title: template.title,
-                      category: template.category,
-                      kind: template.kind,
-                      targetValue: template.targetValue,
-                      targetUnit: template.targetUnit,
-                      period: template.period,
-                    ));
-                  }),
+                GoalChip(
+                  label: template.title,
+                  selected: _hasTemplate(template),
+                  onTap: () => _toggleTemplate(template),
                 ),
             ],
           ),
           const SectionLabel('Goals in this tracker'),
-          if (_goals.isEmpty) const EmptyHint('Add a starter goal or write your own.'),
+          if (_goals.isEmpty) const EmptyHint('Tap a starter, or write your own.'),
           for (var i = 0; i < _goals.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: PulseCard(
+                onTap: () => _editGoal(i),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        '${_goals[i].title} · ${_goals[i].targetValue} ${_goals[i].targetUnit}/${_goals[i].period}',
+                        '${_goals[i].title} · ${formatGoalValue(_goals[i].targetValue)} ${_goals[i].targetUnit}/${_goals[i].period}',
                       ),
                     ),
                     IconButton(
@@ -143,9 +179,10 @@ class _TrackerEditorScreenState extends State<TrackerEditorScreen> {
 }
 
 class GoalDraftSheet extends StatefulWidget {
-  const GoalDraftSheet({super.key, required this.draft});
+  const GoalDraftSheet({super.key, required this.draft, this.editing = false});
 
   final GoalDraft draft;
+  final bool editing;
 
   @override
   State<GoalDraftSheet> createState() => _GoalDraftSheetState();
@@ -160,7 +197,7 @@ class _GoalDraftSheetState extends State<GoalDraftSheet> {
   void initState() {
     super.initState();
     _title = TextEditingController(text: widget.draft.title);
-    _target = TextEditingController(text: widget.draft.targetValue.toString());
+    _target = TextEditingController(text: formatGoalValue(widget.draft.targetValue));
     _unit = TextEditingController(text: widget.draft.targetUnit);
   }
 
@@ -175,17 +212,39 @@ class _GoalDraftSheetState extends State<GoalDraftSheet> {
   @override
   Widget build(BuildContext context) {
     final draft = widget.draft;
+    final boolean = draft.kind == 'boolean';
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Custom goal', style: Theme.of(context).textTheme.titleLarge),
+          Text(widget.editing ? 'Edit goal' : 'Custom goal', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           TextField(
             controller: _title,
+            textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(labelText: 'Goal, like “4 beers a week”'),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final kind in ['count', 'numeric', 'boolean'])
+                GoalChip(
+                  label: kind == 'boolean' ? 'yes / no' : kind,
+                  selected: draft.kind == kind,
+                  onTap: () => setState(() {
+                    draft.kind = kind;
+                    if (kind == 'boolean') {
+                      draft.targetValue = 1;
+                      draft.targetUnit = 'times';
+                      _target.text = '1';
+                      _unit.text = 'times';
+                    }
+                  }),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -211,34 +270,40 @@ class _GoalDraftSheetState extends State<GoalDraftSheet> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _target,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Target'),
+          if (!boolean) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _target,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Target'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _unit,
-                  decoration: const InputDecoration(labelText: 'Unit'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _unit,
+                    decoration: const InputDecoration(labelText: 'Unit'),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () {
               draft.title = _title.text.trim();
-              draft.targetValue = double.tryParse(_target.text.trim()) ?? 1;
-              draft.targetUnit = _unit.text.trim().isEmpty ? 'times' : _unit.text.trim();
+              if (draft.title.isEmpty) return;
+              draft.targetValue = boolean ? 1 : (double.tryParse(_target.text.trim()) ?? 1);
+              if (draft.targetValue <= 0) draft.targetValue = 1;
+              draft.targetUnit = boolean
+                  ? 'times'
+                  : (_unit.text.trim().isEmpty ? 'times' : _unit.text.trim());
               Navigator.of(context).pop(true);
             },
-            child: const Text('Add goal'),
+            child: Text(widget.editing ? 'Save goal' : 'Add goal'),
           ),
         ],
       ),

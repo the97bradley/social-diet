@@ -153,7 +153,15 @@ class _TodayScreenState extends State<TodayScreen> {
                             const SizedBox(height: 8),
                             for (final goal in tracker.goals.take(2))
                               Text(
-                                '${goal.title}: ${_logged(goal, me).toStringAsFixed(0)}/${goal.targetValue.toStringAsFixed(0)} ${goal.targetUnit}',
+                                goalHeadline(
+                                  goal: goal,
+                                  logged: loggedToward(
+                                    _entries,
+                                    goalId: goal.id,
+                                    userId: me,
+                                    period: goal.period,
+                                  ),
+                                ),
                                 style: const TextStyle(color: PulseTheme.mist),
                               ),
                           ],
@@ -166,13 +174,4 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  double _logged(TrackerGoal goal, String userId) {
-    final now = DateTime.now().toUtc();
-    return _entries
-        .where((entry) =>
-            entry.goalId == goal.id &&
-            entry.userId == userId &&
-            isInPeriod(entry.loggedOn, now, parseGoalPeriod(goal.period)))
-        .fold<double>(0, (sum, entry) => sum + entry.value);
-  }
 }

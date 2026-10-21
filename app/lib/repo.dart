@@ -145,17 +145,26 @@ class DietRepo {
     return [for (final row in rows) TrackerEntry.fromJson(row)];
   }
 
-  Future<void> logGoal({
+  Future<TrackerEntry> logGoal({
     required String goalId,
     required double value,
     String note = '',
-  }) {
-    return client.from('tracker_entries').insert({
+  }) async {
+    final row = await client.from('tracker_entries').insert({
       'goal_id': goalId,
       'user_id': uid,
       'value': value,
       'note': note,
-    });
+    }).select().single();
+    return TrackerEntry.fromJson(row);
+  }
+
+  Future<void> deleteEntry(String entryId) {
+    return client.from('tracker_entries').delete().eq('id', entryId).eq('user_id', uid);
+  }
+
+  Future<void> deleteTracker(String trackerId) {
+    return client.from('trackers').delete().eq('id', trackerId).eq('owner_id', uid);
   }
 
   Future<void> shareTracker(String trackerId, String friendId) {

@@ -206,14 +206,15 @@ class TrackerMember {
 }
 
 class TrackerEntry {
-  const TrackerEntry({
+  TrackerEntry({
     required this.id,
     required this.goalId,
     required this.userId,
     required this.loggedOn,
     required this.value,
     this.note = '',
-  });
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? loggedOn;
 
   final String id;
   final String goalId;
@@ -221,15 +222,20 @@ class TrackerEntry {
   final DateTime loggedOn;
   final double value;
   final String note;
+  final DateTime createdAt;
 
   factory TrackerEntry.fromJson(Map<String, dynamic> json) {
+    final loggedOn = DateTime.parse(json['logged_on'] as String);
     return TrackerEntry(
       id: json['id'] as String,
       goalId: json['goal_id'] as String,
       userId: json['user_id'] as String,
-      loggedOn: DateTime.parse(json['logged_on'] as String),
+      loggedOn: loggedOn,
       value: (json['value'] as num?)?.toDouble() ?? 1,
       note: json['note'] as String? ?? '',
+      createdAt: json['created_at'] == null
+          ? loggedOn
+          : DateTime.parse(json['created_at'] as String),
     );
   }
 }

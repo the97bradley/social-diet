@@ -123,6 +123,107 @@ Future<void> showError(BuildContext context, Object error) {
       .closed;
 }
 
+class PulseBar extends StatelessWidget {
+  const PulseBar({super.key, required this.value, this.color = PulseTheme.lime});
+
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: LinearProgressIndicator(
+        value: value.clamp(0, 1),
+        minHeight: 8,
+        backgroundColor: PulseTheme.leaf,
+        color: color,
+      ),
+    );
+  }
+}
+
+class FacePile extends StatelessWidget {
+  const FacePile({super.key, required this.initials, this.size = 28, this.max = 4});
+
+  final List<String> initials;
+  final double size;
+  final int max;
+
+  @override
+  Widget build(BuildContext context) {
+    if (initials.isEmpty) return const SizedBox.shrink();
+    final shown = initials.take(max).toList();
+    final extra = initials.length - shown.length;
+    return SizedBox(
+      width: size + (shown.length - 1 + (extra > 0 ? 1 : 0)) * (size * 0.62),
+      height: size,
+      child: Stack(
+        children: [
+          for (var i = 0; i < shown.length; i++)
+            Positioned(
+              left: i * size * 0.62,
+              child: AvatarMark(initials: shown[i], size: size),
+            ),
+          if (extra > 0)
+            Positioned(
+              left: shown.length * size * 0.62,
+              child: AvatarMark(initials: '+$extra', size: size),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TrackerSummaryCard extends StatelessWidget {
+  const TrackerSummaryCard({
+    super.key,
+    required this.title,
+    required this.headline,
+    required this.progress,
+    required this.meta,
+    required this.memberInitials,
+    this.onTap,
+  });
+
+  final String title;
+  final String headline;
+  final double progress;
+  final String meta;
+  final List<String> memberInitials;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PulseCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+              ),
+              FacePile(initials: memberInitials),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            headline,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(meta, style: const TextStyle(color: PulseTheme.mist)),
+          const SizedBox(height: 12),
+          PulseBar(value: progress),
+        ],
+      ),
+    );
+  }
+}
+
 class GoalChip extends StatelessWidget {
   const GoalChip({
     super.key,

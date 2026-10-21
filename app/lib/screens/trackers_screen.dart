@@ -18,6 +18,7 @@ class TrackersScreen extends StatefulWidget {
 class _TrackersScreenState extends State<TrackersScreen> {
   List<Tracker> _trackers = [];
   List<TrackerEntry> _entries = [];
+  Map<String, Profile> _people = {};
   bool _loading = true;
 
   @override
@@ -28,15 +29,19 @@ class _TrackersScreenState extends State<TrackersScreen> {
     });
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool silent = false}) async {
     final repo = SessionScope.of(context).repo;
-    setState(() => _loading = true);
+    if (!silent || _trackers.isEmpty) setState(() => _loading = true);
     try {
       _trackers = await repo.myTrackers();
       _entries = await repo.entriesForGoals([
         for (final tracker in _trackers)
           for (final goal in tracker.goals) goal.id,
       ]);
+      _people = await repo.profilesByIds({
+        for (final tracker in _trackers)
+          for (final member in tracker.members) member.userId,
+      });
     } catch (error) {
       if (mounted) await showError(context, error);
     } finally {
@@ -44,20 +49,54 @@ class _TrackersScreenState extends State<TrackersScreen> {
     }
   }
 
+  TrackerGoal? _focusGoal(Tracker tracker, String userId) {
+    TrackerGoal? pick;
+    var worst = 2.0;
+    for (final goal in tracker.goals) {
+      final logged = loggedToward(
+        _entries,
+        goalId: goal.id,
+        userId: userId,
+        period: goal.period,
+      );
+      final progress = goalProgress(logged: logged, target: goal.targetValue);
+      if (progress < worst) {
+        worst = progress;
+        pick = goal;
+      }
+    }
+    return pick;
+  }
+
   double _trackerProgress(Tracker tracker, String userId) {
     if (tracker.goals.isEmpty) return 0;
-    final now = DateTime.now().toUtc();
     var total = 0.0;
     for (final goal in tracker.goals) {
-      final logged = _entries
-          .where((entry) =>
-              entry.goalId == goal.id &&
-              entry.userId == userId &&
-              isInPeriod(entry.loggedOn, now, parseGoalPeriod(goal.period)))
-          .fold<double>(0, (sum, entry) => sum + entry.value);
-      total += goalProgress(logged: logged, target: goal.targetValue);
+      total += goalProgress(
+        logged: loggedToward(
+          _entries,
+          goalId: goal.id,
+          userId: userId,
+          period: goal.period,
+        ),
+        target: goal.targetValue,
+      );
     }
     return total / tracker.goals.length;
+  }
+
+  String _headline(Tracker tracker, String userId) {
+    final goal = _focusGoal(tracker, userId);
+    if (goal == null) return 'Add a goal to start';
+    return goalHeadline(
+      goal: goal,
+      logged: loggedToward(
+        _entries,
+        goalId: goal.id,
+        userId: userId,
+        period: goal.period,
+      ),
+    );
   }
 
   Future<void> _create() async {
@@ -67,64 +106,82 @@ class _TrackersScreenState extends State<TrackersScreen> {
     if (created == true) await _load();
   }
 
+  Future<void> _open(Tracker tracker) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => TrackerDetailScreen(tracker: tracker)),
+    );
+    await _load(silent: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = SessionScope.of(context).user!.id;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trackers'),
-        actions: [
-          IconButton(onPressed: _create, icon: const Icon(Icons.add)),
-        ],
+      appBar: AppBar(title: const Text('Trackers')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _create,
+        icon: const Icon(Icons.add),
+        label: const Text('New tracker'),
       ),
-      body: _loading
+      body: _loading && _trackers.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
                 children: [
-                  const Text(
-                    'A tracker is a bundle of goals you invent: workouts, beers, water, anything you want to count with friends.',
-                    style: TextStyle(color: PulseTheme.mist),
-                  ),
-                  const SizedBox(height: 16),
                   if (_trackers.isEmpty)
                     PulseCard(
                       onTap: _create,
-                      child: const Text('Create your first tracker'),
-                    ),
-                  for (final tracker in _trackers)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: PulseCard(
-                        onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => TrackerDetailScreen(tracker: tracker),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nothing to count yet',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Make a tracker, log against it, then share it with friends.',
+                            style: TextStyle(color: PulseTheme.mist, height: 1.4),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'New tracker',
+                            style: TextStyle(
+                              color: PulseTheme.lime,
+                              fontWeight: FontWeight.w700,
                             ),
-                          );
-                          await _load();
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(tracker.title, style: Theme.of(context).textTheme.titleLarge),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${tracker.goals.length} goals · ${tracker.members.length} people',
-                              style: const TextStyle(color: PulseTheme.mist),
-                            ),
-                            const SizedBox(height: 10),
-                            LinearProgressIndicator(
-                              value: _trackerProgress(tracker, me),
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    for (final tracker in _trackers)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TrackerSummaryCard(
+                          title: tracker.title,
+                          headline: _headline(tracker, me),
+                          progress: _trackerProgress(tracker, me),
+                          meta: tracker.goals.isEmpty
+                              ? '${tracker.members.length} people'
+                              : '${tracker.goals.length} goals · ${tracker.members.length} people',
+                          memberInitials: [
+                            for (final member in tracker.members)
+                              (_people[member.userId] ??
+                                      Profile(
+                                        id: member.userId,
+                                        username: '',
+                                        displayName: member.userId == me ? 'You' : 'Friend',
+                                        bio: '',
+                                        dailyCalorieGoal: 2000,
+                                      ))
+                                  .initials,
                           ],
+                          onTap: () => _open(tracker),
                         ),
                       ),
-                    ),
                 ],
               ),
             ),
